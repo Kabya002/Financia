@@ -1,16 +1,17 @@
 from flask_wtf import FlaskForm
 from wtforms import FloatField, StringField, SubmitField, PasswordField
-from wtforms.validators import DataRequired, URL, Email
+from wtforms.validators import DataRequired, URL, Email, InputRequired,Length, EqualTo
 
 class RegisterForm(FlaskForm):
-    email = StringField("Email", validators=[DataRequired(), Email()])
-    password = PasswordField("Password", validators=[DataRequired()])
-    name = StringField("Name", validators=[DataRequired()])
+    email = StringField("Email", validators=[InputRequired(), Email()])
+    username = StringField("Name", validators=[InputRequired(), Length(min=2, max=30)])
+    password = PasswordField("Password", validators=[InputRequired(), Length(min=6)])
+    confirm_password = PasswordField("Confirm Password", validators=[InputRequired(), EqualTo('password')])
     submit = SubmitField("Register")
 
 class LoginForm(FlaskForm):
-    email = StringField("Email", validators=[DataRequired(), Email()])
-    password = PasswordField("Password", validators=[DataRequired()])
+    email = StringField("Email", validators=[InputRequired(), Email()])
+    password = PasswordField("Password", validators=[InputRequired()])
     submit = SubmitField("Login")
     
 class IncomeForm(FlaskForm):

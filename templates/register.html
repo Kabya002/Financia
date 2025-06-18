@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container mt-5">
+    <h2>Register</h2>
+    {{ render_form(form) }}
+    <p>Already registered? <a href="{{ url_for('login') }}">Log in here</a>.</p>
+  </div>
+{% endblock %}
