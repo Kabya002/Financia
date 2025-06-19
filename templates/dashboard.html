@@ -2,119 +2,172 @@
 
 {% block content %}
 <style>
-.dashboard-header {
+  .dashboard-header {
     height: 200px;
     background-size: cover;
     background-position: center;
     background-image: url('{{ current_user.profile_image_url if current_user.profile_image_url else url_for("static", filename="static/img/default-bg.jpg") }}');
-}
+  }
 
-    .balance-card {
-        background-color: #f0f8ff;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 15px;
-        text-align: center;
-        font-size: 1.2rem;
-    }
+  .balance-card {
+    background-color: #f0f8ff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 1.2rem;
+  }
 
-    .history-table td {
-        color: #dc3545;
-    }
+  .history-table td {
+    color: #dc3545;
+  }
 
-    .transaction-box {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 20px;
-        background: white;
-    }
+  .transaction-box {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    background: white;
+  }
 </style>
 
-<div class="container mt-4">
-    <div class="row">
-        <!-- Left panel -->
-        <div class="col-md-5">
-            <div class="transaction-box">
-                <h5>Add Transaction</h5>
-                <form method="POST">
-                    <!-- Your form goes here -->
-                    <div class="mb-2">
-                        <label>Category</label>
-                        <select class="form-select" name="category">
-                            <option>Groceries</option>
-                            <option>Transport</option>
-                            <option>Utilities</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label>Amount</label>
-                        <input class="form-control" name="amount" type="text" />
-                    </div>
-                    <div class="mb-2">
-                        <label>Date</label>
-                        <input class="form-control" name="date" type="date" />
-                    </div>
-                    <button type="submit" class="btn btn-success">Add Transaction</button>
-                </form>
-
-                <hr>
-                <h6>Expense History</h6>
-                <table class="table table-sm history-table">
-                    <thead>
-                        <tr><th>Date</th><th>Category</th><th>Amount</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>2024-04-23</td><td>Groceries</td><td>$100.00</td></tr>
-                        <tr><td>2024-04-22</td><td>Transport</td><td>$250.00</td></tr>
-                        <tr><td>2024-04-21</td><td>Utilities</td><td>$150.00</td></tr>
-                    </tbody>
-                </table>
-            </div>
+<div class="container py-4">
+  <div class="row">
+    <!-- Left Panel: Forms + History -->
+    <div class="col-md-5">
+      <h4 class="mt-4">Add Expense</h4>
+      <form method="POST">
+        {{ expense_form.hidden_tag() }}
+        <div class="mb-2">{{ expense_form.category.label }}
+          <input list="categories" name="category" class="form-control" required>
+          <datalist id="categories">
+            {% for cat in user_categories %}
+            <option value="{{ cat.name }}">
+            {% endfor %}
+          </datalist>
         </div>
+        <div class="mb-2">{{ expense_form.amount.label }} {{ expense_form.amount(class_='form-control') }}</div>
+        <div class="mb-2">{{ expense_form.date.label }} {{ expense_form.date(class_='form-control') }}</div>
+        <div class="mb-2">{{ expense_form.submit(class_='btn btn-danger') }}</div>
+      </form>
 
-        <!-- Right panel -->
-        <div class="col-md-7">
-            <div class="balance-card">Total Balance<br><strong>$5,250.00</strong></div>
-            <div class="balance-card">Total Balance<br><strong>$5,250.00</strong></div>
-            <div class="balance-card">Total Balance<br><strong>$5,250.00</strong></div>
-
-            <div class="mt-4">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6>Monthly</h6>
-                    <select class="form-select w-auto">
-                        <option selected>Monthly</option>
-                        <option>Weekly</option>
-                    </select>
-                </div>
-                <canvas id="chart" height="200"></canvas>
-            </div>
-        </div>
+      <h6 class="mt-5">Expense History</h6>
+      <table class="table table-sm history-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in expenses %}
+          <tr>
+            <td>{{ item.date }}</td>
+            <td>{{ item.source }}</td>
+            <td>&#8377;{{ '%.2f'|format(item.expense) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+
+    <!-- Right Panel: Summary + Chart -->
+    <div class="col-md-7 d-flex flex-column">
+      <div class="balance-card mb-2">Total Income<br><strong>&#8377;{{ total_income }}</strong></div>
+      <div class="balance-card mb-2">Total Expense<br><strong>&#8377;{{ total_expense }}</strong></div>
+      <div class="balance-card mb-4">Balance<br><strong>&#8377;{{ total_balance }}</strong></div>
+
+      <div class="mt-auto">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 id="chartTitle">Monthly Summary</h6>
+          <div>
+            <button id="prevBtn" class="btn btn-outline-dark btn-sm me-1">Prev</button>
+            <button id="nextBtn" class="btn btn-outline-dark btn-sm">Next</button>
+            <select id="chartType" class="form-select form-select-sm d-inline-block w-auto ms-2">
+              <option value="month">Monthly</option>
+              <option value="week">Weekly</option>
+            </select>
+          </div>
+        </div>
+
+<div class="text-center mb-2"><strong id="rangeLabel"></strong></div>
+<div class="chart-container" style="position: relative; height:300px;">
+  <canvas id="summaryChart" width="400" height="200"></canvas>
 </div>
 
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const ctx = document.getElementById('chart');
-new Chart(ctx, {
-    type: 'bar',
-    data: {
-        labels: ['Jan', 'Feb', 'Mar'],
-        datasets: [{
-            label: 'Series 1',
-            data: [3, 6, 12],
-            backgroundColor: 'rgba(0, 200, 255, 0.7)'
-        }, {
-            label: 'Series 2',
-            data: [2, 8, 14],
-            backgroundColor: 'rgba(0, 255, 200, 0.6)'
-        }]
-    },
-    options: {
+  let chart;
+  let chartOffset = 0;
+  let chartType = 'month';
+
+  function fetchChartData() {
+    fetch(`/api/chart-data?type=${chartType}&offset=${chartOffset}`)
+      .then(response => response.json())
+      .then(data => {
+        chart.data.labels = data.labels;
+        chart.data.datasets[0].data = data.income;
+        chart.data.datasets[1].data = data.expense;
+        chart.update();
+        document.getElementById('rangeLabel').innerText = data.range_label;
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const ctx = document.getElementById("summaryChart").getContext("2d"); // ✅ Correct ID
+    chart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: [],
+        datasets: [
+          { label: "Income", backgroundColor: "#28a745", data: [] },
+          { label: "Expense", backgroundColor: "#dc3545", data: [] }
+        ]
+      },
+      options: {
         responsive: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        },
         scales: {
-            y: { beginAtZero: true }
+          y: {
+            beginAtZero: true
+          },
+          x: {
+            stacked: false
+          }
         }
-    }
-});
+      }
+    });
+
+    fetchChartData();
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      chartOffset += 1;
+      fetchChartData();
+    });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      if (chartOffset > 0) {
+        chartOffset -= 1;
+        fetchChartData();
+      }
+    });
+
+    document.getElementById("chartType").addEventListener("change", (e) => {
+      chartType = e.target.value;
+      chartOffset = 0;
+      fetchChartData();
+      document.getElementById("chartTitle").innerText = chartType === 'week' ? 'Weekly Summary' : 'Monthly Summary';
+    });
+  });
 </script>
 {% endblock %}

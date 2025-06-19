@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import FloatField, StringField, SubmitField, PasswordField
+from wtforms import FloatField, StringField, SubmitField, PasswordField, DateField
 from wtforms.validators import DataRequired, URL, Email, InputRequired,Length, EqualTo
 
 class RegisterForm(FlaskForm):
@@ -23,13 +23,13 @@ class LoginForm(FlaskForm):
 class IncomeForm(FlaskForm):
     source = StringField("Income Source", validators=[DataRequired()])
     date = StringField("Date (YYYY-MM-DD)", validators=[DataRequired()])
-    income = FloatField("Income", validators=[DataRequired()])
+    amount = FloatField("Amount", validators=[DataRequired()])
     submit = SubmitField("Add Income")
 
 class ExpenseForm(FlaskForm):
-    source = StringField("Expense Source", validators=[DataRequired()])
-    date = StringField("Date (YYYY-MM-DD)", validators=[DataRequired()])
-    expanse = FloatField("Expense", validators=[DataRequired()])
+    category = StringField("Category", validators=[DataRequired()])
+    amount = FloatField("Amount", validators=[DataRequired()])
+    date = DateField("Date", validators=[DataRequired()], format='%Y-%m-%d')
     submit = SubmitField("Add Expense")
 
 class ContactForm(FlaskForm):

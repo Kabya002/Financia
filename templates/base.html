@@ -43,7 +43,8 @@
 </style>
 
 
-<body>
+<body class="d-flex flex-column min-vh-100">
+
 
   <!-- Navigation-->
   <nav class="navbar navbar-expand-lg" id="mainNav">
@@ -113,8 +114,9 @@
   {% endwith %}
 
   <div class="dashboard-header"></div>
-  {% block content %}
-  {% endblock %}
+  <main class="flex-grow-1">
+    {% block content %}{% endblock %}
+  </main>
 
   <!-- Footer-->
   <footer class="border-top">
@@ -153,6 +155,8 @@
       </div>
     </div>
   </footer>
+  {% block scripts %}
+  {% endblock %}
   <!-- Bootstrap core JS-->
     <script>
   // Slide and fade out flash messages after 3 seconds

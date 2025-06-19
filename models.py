@@ -1,7 +1,8 @@
 from typing import List
 from flask_login import UserMixin
-from sqlalchemy import String, Integer, ForeignKey, Float
+from sqlalchemy import String, Integer, ForeignKey, Float, Date
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+import datetime
 class Base(DeclarativeBase):
     pass
 
@@ -20,13 +21,13 @@ class User(UserMixin, Base):
     # Relationships (if needed)
     incomes: Mapped[List["Income"]] = relationship(back_populates="user")
     expenses: Mapped[List["Expense"]] = relationship(back_populates="user")
-
+    categories: Mapped[List["Category"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 class Income(Base):
     __tablename__ = "incomes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source: Mapped[str] = mapped_column(String(100), nullable=False)
-    date: Mapped[str] = mapped_column(String(10), nullable=False)
+    date: Mapped[datetime.date] = mapped_column(Date)
     income: Mapped[float] = mapped_column(Float, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
@@ -37,8 +38,16 @@ class Expense(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source: Mapped[str] = mapped_column(String(100), nullable=False)
-    date: Mapped[str] = mapped_column(String(10), nullable=False)
+    date: Mapped[datetime.date] = mapped_column(Date)
     expense: Mapped[float] = mapped_column(Float, nullable=False)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="expenses")
+    
+class Category(Base):
+    __tablename__ = "categories"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+
+    user: Mapped["User"] = relationship(back_populates="categories")

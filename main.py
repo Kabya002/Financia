@@ -12,10 +12,13 @@ from flask_gravatar import Gravatar
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user, login_required
 from forms import IncomeForm, RegisterForm, LoginForm, ExpenseForm, ContactForm
 from config import Config
-from models import Base, User, Income, Expense
-from utils import is_valid_amount, format_currency, get_current_date
+from models import User, Income, Expense, Category, Base
+from flask import session
+from utils import (get_total_income,get_total_expense,get_balance,get_monthly_expense,get_weekly_expense, get_chart_data_for_period)
+from datetime import date, timedelta
 import smtplib
 import os
+from flask import jsonify
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -41,10 +44,92 @@ def load_user(user_id):
 def home():
     return render_template("home.html")
 
-@app.route('/dashboard')
+
+@app.route('/dashboard', methods=["GET", "POST"])
 @login_required
 def dashboard():
-    return render_template("dashboard.html")
+    expense_form = ExpenseForm()
+    income_form = IncomeForm()
+
+    #Handle Expense Form Submission
+    if expense_form.validate_on_submit() and expense_form.submit.data:
+        category_name = expense_form.category.data.strip()
+
+        # Save new category if it doesn't exist
+        category = db.session.query(Category).filter_by(name=category_name, user_id=current_user.id).first()
+        if not category:
+            category = Category(name=category_name, user_id=current_user.id)
+            db.session.add(category)
+            db.session.commit()
+
+        # Save new expense
+        new_expense = Expense(
+            source=category_name,
+            date=expense_form.date.data,  # This is already a datetime.date object from the WTForm
+            expense=expense_form.amount.data,
+            user_id=current_user.id
+        )
+
+        db.session.add(new_expense)
+        db.session.commit()
+        flash("Expense added successfully!", "success")
+        return redirect(url_for('dashboard'))
+
+    # 💵 Handle Income Form Submission (optional)
+    if income_form.validate_on_submit() and income_form.submit.data:
+        new_income = Income(
+            source=income_form.source.data,
+            date=income_form.date.data,
+            income=income_form.amount.data,
+            user_id=current_user.id
+        )
+
+        db.session.add(new_income)
+        db.session.commit()
+        flash("Income added successfully!", "success")
+        return redirect(url_for('dashboard'))
+
+    # 📦 Load expense history & category list
+    expenses = db.session.query(Expense).filter_by(user_id=current_user.id).order_by(Expense.date.desc()).all()
+    user_categories = db.session.query(Category).filter_by(user_id=current_user.id).all()
+
+    # 📊 Totals using utils
+    total_income = get_total_income(db, current_user.id)
+    total_expense = get_total_expense(db, current_user.id)
+    total_balance = get_balance(db, current_user.id)
+    monthly_expenses = get_monthly_expense(db, current_user.id)
+    weekly_expenses = get_weekly_expense(db, current_user.id)
+    
+  #Chart data: Get last 3 periods (month or week)
+    chart_type = request.args.get("type", "monthly")
+    offset = int(request.args.get("offset", 0))
+    labels, income_chart_data, expense_chart_data, range_label = get_chart_data_for_period(db, current_user.id, chart_type, offset)
+    return render_template(
+    "dashboard.html",
+    expense_form=expense_form,
+    income_form=income_form,
+    expenses=expenses,
+    total_income=total_income,
+    total_expense=total_expense,
+    total_balance=total_balance,
+    monthly_expenses=monthly_expenses,
+    weekly_expenses=weekly_expenses,
+    user_categories=user_categories,
+    chart_labels=labels,
+    chart_income=income_chart_data,
+    chart_expense=expense_chart_data,
+    chart_range_label=range_label
+)
+
+
+@app.route("/api/chart-data")
+@login_required
+def chart_data():
+    chart_type = request.args.get("type", "month")  # 'month' or 'week'
+    offset = int(request.args.get("offset", 0))
+    
+    chart_data = get_chart_data_for_period(db, current_user.id, chart_type, offset)
+    return jsonify(chart_data)
 
 @login_required
 @app.route('/income')
