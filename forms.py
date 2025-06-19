@@ -3,11 +3,17 @@ from wtforms import FloatField, StringField, SubmitField, PasswordField
 from wtforms.validators import DataRequired, URL, Email, InputRequired,Length, EqualTo
 
 class RegisterForm(FlaskForm):
-    email = StringField("Email", validators=[InputRequired(), Email()])
-    username = StringField("Name", validators=[InputRequired(), Length(min=2, max=30)])
-    password = PasswordField("Password", validators=[InputRequired(), Length(min=6)])
-    confirm_password = PasswordField("Confirm Password", validators=[InputRequired(), EqualTo('password')])
-    submit = SubmitField("Register")
+    name = StringField("Name", validators=[DataRequired(), Length(min=2, max=50)])
+    email = StringField("Email", validators=[DataRequired(), Email(message="Enter a valid email address!")])
+    password = PasswordField("Password", validators=[
+        DataRequired(), 
+        Length(min=6, message="Password must be at least 6 characters")
+    ])
+    confirm_password = PasswordField("Confirm Password", validators=[
+        DataRequired(),
+        EqualTo('password', message="Passwords must match!")
+    ])
+    submit = SubmitField("Sign Up")
 
 class LoginForm(FlaskForm):
     email = StringField("Email", validators=[InputRequired(), Email()])
