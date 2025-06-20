@@ -1,0 +1,80 @@
+.dropdown-menu .btn {
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+}
+.dashboard-header {
+  height: 250px;
+  background-size: cover;
+  background-position: center;
+}
+
+.slide-out {
+  transition: all 0.5s ease;
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+#mainNav {
+  transition: top 0.4s;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  z-index: 1030;
+}
+
+.balance-card {
+  background-color: #f0f8ff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+.history-table td {
+  color: #dc3545;
+}
+
+.transaction-box {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  background: white;
+}
+
+body {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  padding-top: 45px;
+}
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.register-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Fix dropdown behind Chart.js canvas */
+canvas {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure cards don’t clip dropdowns */
+.card {
+  overflow: visible !important;
+}
+
+/* Force dropdown on top of everything */
+.dropdown-menu {
+  z-index: 9999 !important;
+  position: absolute !important;
+}

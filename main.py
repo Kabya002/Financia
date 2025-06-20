@@ -36,7 +36,6 @@ def handle_csrf_error(e):
     flash("CSRF token missing or incorrect.", "danger")
     return redirect(request.referrer or url_for('dashboard'))
 
-
 with app.app_context():
     Base.metadata.create_all(bind=db.engine)
 
@@ -49,6 +48,9 @@ login_manager.init_app(app)
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
+@app.context_processor
+def inject_request():
+    return dict(request=request)
 
 @app.route('/')
 def home():
@@ -199,46 +201,57 @@ def profile():
     )
     
 
-@app.route("/upload-profile", methods=["POST"])
+@app.route("/upload-images", methods=["POST"])
 @login_required
-def upload_profile():
-    if "profile_picture" not in request.files:
-        flash("No file part in the request.", "danger")
-        return redirect(url_for('profile'))
+def upload_images():
+    allowed_exts = ["jpg", "jpeg", "png", "gif", "webp"]
 
-    file = request.files["profile_picture"]
-    if file.filename == "":
-        flash("No file selected.", "warning")
-        return redirect(url_for('profile'))
+    def delete_if_custom(file_path: str):
+        # Only delete if file exists and is not a default image
+        if os.path.exists(file_path) and "default-" not in file_path:
+            os.remove(file_path)
 
-    if file:
-        filename = secure_filename(file.filename)
-        ext = filename.rsplit(".", 1)[-1].lower()
+    # --- Handle Profile Picture ---
+    profile_file = request.files.get("profile_picture")
+    if profile_file and profile_file.filename != "":
+        profile_ext = secure_filename(profile_file.filename).rsplit(".", 1)[-1].lower()
+        if profile_ext in allowed_exts:
+            profile_filename = f"{uuid.uuid4().hex}.{profile_ext}"
+            profile_dir = os.path.join("static", "uploads")
+            os.makedirs(profile_dir, exist_ok=True)
+            profile_path = os.path.join(profile_dir, profile_filename)
 
-        # Optionally: validate extension (jpg, png, etc.)
-        allowed_exts = ["jpg", "jpeg", "png", "gif", "webp"]
-        if ext not in allowed_exts:
-            flash("Invalid file type. Please upload an image.", "danger")
-            return redirect(url_for('profile'))
+            # Delete old profile image
+            old_profile_path = os.path.join("static", current_user.profile_image_url.split("static/")[-1])
+            delete_if_custom(old_profile_path)
 
-        # Save file
-        new_filename = f"{uuid.uuid4().hex}.{ext}"
-        upload_dir = os.path.join("static", "uploads")
-        os.makedirs(upload_dir, exist_ok=True)  # ensure dir exists
-        filepath = os.path.join(upload_dir, new_filename)
-        file.save(filepath)
+            profile_file.save(profile_path)
+            current_user.profile_image_url = f"static/uploads/{profile_filename}"
+        else:
+            flash("Invalid profile image file type.", "danger")
 
-        # Save relative path to DB
-        current_user.profile_image_url = f"/static/uploads/{new_filename}"
-        db.session.commit()
+    # --- Handle Banner Image ---
+    banner_file = request.files.get("banner_image")
+    if banner_file and banner_file.filename != "":
+        banner_ext = secure_filename(banner_file.filename).rsplit(".", 1)[-1].lower()
+        if banner_ext in allowed_exts:
+            banner_filename = f"{uuid.uuid4().hex}.{banner_ext}"
+            banner_dir = os.path.join("static", "banners")
+            os.makedirs(banner_dir, exist_ok=True)
+            banner_path = os.path.join(banner_dir, banner_filename)
 
-        flash("Profile picture updated!", "success")
-    else:
-        flash("File upload failed.", "danger")
+            # Delete old banner image
+            old_banner_path = os.path.join("static", current_user.banner_image_url.split("static/")[-1])
+            delete_if_custom(old_banner_path)
 
-    return redirect(url_for('profile'))
+            banner_file.save(banner_path)
+            current_user.banner_image_url = f"static/banners/{banner_filename}"
+        else:
+            flash("Invalid banner image file type.", "danger")
 
-
+    db.session.commit()
+    flash("Images updated successfully!", "success")
+    return redirect(url_for("profile"))
 
 @app.route("/edit-profile", methods=["GET", "POST"])
 @login_required
@@ -269,8 +282,6 @@ def change_password():
             db.session.commit()
             flash("Password updated successfully.", "success")
         return redirect(url_for('account_settings'))
-
-
 
 @app.route("/delete-account", methods=["POST"])
 @login_required
@@ -306,6 +317,9 @@ def register():
         login_user(new_user)
         flash("Registered successfully!", "success")
         return redirect(url_for('dashboard'))
+    else:
+        if request.method == "POST":
+            print("Form errors:", form.errors) 
     return render_template("register.html", form=form)
 
 @app.route("/login", methods=["GET", "POST"])
@@ -319,6 +333,9 @@ def login():
             return redirect(url_for('dashboard'))
         else:
             flash("Invalid email or password!", "danger")
+    else:
+        if request.method == "POST":
+            print("Form errors:", form.errors) 
     return render_template("login.html", form=form)
 
 @app.route('/logout')

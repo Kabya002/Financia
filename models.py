@@ -14,7 +14,8 @@ class User(UserMixin, Base):
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    profile_image_url: Mapped[str] = mapped_column(String(250), default="static/img/default-bg.jpg", nullable=False)
+    profile_image_url: Mapped[str] = mapped_column(String(250), default="static/uploads/default-bg.jpg", nullable=False)
+    banner_image_url: Mapped[str] = mapped_column(String(250), default="static/banners/default-bg.jpg", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

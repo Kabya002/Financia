@@ -1,35 +1,7 @@
-{% extends 'base.html' %}
-
+{% extends "base.html" %}
+{% block styles %}
+{% endblock %}
 {% block content %}
-<style>
-  .dashboard-header {
-    height: 200px;
-    background-size: cover;
-    background-position: center;
-    background-image: url('{{ current_user.profile_image_url if current_user.profile_image_url else url_for("static", filename="static/img/default-bg.jpg") }}');
-  }
-
-  .balance-card {
-    background-color: #f0f8ff;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 15px;
-    text-align: center;
-    font-size: 1.2rem;
-  }
-
-  .history-table td {
-    color: #dc3545;
-  }
-
-  .transaction-box {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 20px;
-    background: white;
-  }
-</style>
-
 <div class="container py-4">
   <div class="row">
     <!-- Left Panel: Forms + History -->
@@ -42,7 +14,7 @@
           <datalist id="categories">
             {% for cat in user_categories %}
             <option value="{{ cat.name }}">
-            {% endfor %}
+              {% endfor %}
           </datalist>
         </div>
         <div class="mb-2">{{ expense_form.amount.label }} {{ expense_form.amount(class_='form-control') }}</div>
@@ -90,10 +62,10 @@
           </div>
         </div>
 
-<div class="text-center mb-2"><strong id="rangeLabel"></strong></div>
-<div class="chart-container" style="position: relative; height:300px;">
-  <canvas id="summaryChart" width="400" height="200"></canvas>
-</div>
+        <div class="text-center mb-2"><strong id="rangeLabel"></strong></div>
+        <div class="chart-container" style="position: relative; height:300px;">
+          <canvas id="summaryChart" width="400" height="200"></canvas>
+        </div>
 
       </div>
     </div>
@@ -102,7 +74,6 @@
 {% endblock %}
 
 {% block scripts %}
-{{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   let chart;
