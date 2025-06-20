@@ -1,8 +1,8 @@
 from typing import List
 from flask_login import UserMixin
-from sqlalchemy import String, Integer, ForeignKey, Float, Date
+from sqlalchemy import String, Integer, ForeignKey, Float, Date, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-import datetime
+from datetime import datetime
 class Base(DeclarativeBase):
     pass
 
@@ -15,7 +15,7 @@ class User(UserMixin, Base):
     password: Mapped[str] = mapped_column(String(100), nullable=False)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     profile_image_url: Mapped[str] = mapped_column(String(250), default="static/img/default-bg.jpg", nullable=False)
-
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
     # Relationships (if needed)

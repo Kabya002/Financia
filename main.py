@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Text, DateTime
 from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 #from flask_ckeditor import CKEditor, CKEditorField
 from datetime import datetime
 #from functools import wraps
@@ -19,13 +20,22 @@ from datetime import date, timedelta
 import smtplib
 import os
 from flask import jsonify
+import uuid
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
 db = SQLAlchemy(app)
 bootstrap = Bootstrap5(app)
-csrf = CSRFProtect(app)
+csrf_token = CSRFProtect(app)
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    flash("CSRF token missing or incorrect.", "danger")
+    return redirect(request.referrer or url_for('dashboard'))
+
 
 with app.app_context():
     Base.metadata.create_all(bind=db.engine)
@@ -136,10 +146,145 @@ def chart_data():
 def income():
     return render_template("income.html")
 
+
+@app.route("/account-settings", methods=["GET", "POST"])
 @login_required
+def account_settings():
+    form = RegisterForm(obj=current_user)  # Prefill with current user data
+
+    if form.validate_on_submit():
+        current_user.name = form.name.data
+        current_user.email = form.email.data
+        db.session.commit()
+        flash("Profile updated successfully.", "success")
+        return redirect(url_for('account_settings'))
+
+    return render_template("account.html", form=form)
+
+
 @app.route('/profile')
+@login_required
 def profile():
-    return render_template("profile.html")
+    chart_data= get_chart_data_for_period(db, current_user.id, 'month', 0)
+    total_income = get_total_income(db, current_user.id)
+    total_expense = get_total_expense(db, current_user.id)
+    total_balance = total_income - total_expense
+    start_of_month = datetime(datetime.today().year, datetime.today().month, 1)
+    member_since = current_user.created_at
+    monthly_entries = db.session.query(Expense).filter(Expense.user_id == current_user.id, Expense.date >= start_of_month).count()
+
+    achievements = []
+    if total_income >= 10000:
+        achievements.append("🎯 Earned ₹10K+ Income")
+    if total_expense >= 5000:
+        achievements.append("💸 Spent ₹5K+")
+    if total_balance >= 5000:
+        achievements.append("🏆 Saved ₹5K+")
+    if len(current_user.expenses) >= 30:
+        achievements.append("📅 Logged 30+ Expenses")
+    if len(current_user.incomes) >= 30:
+        achievements.append("💼 Logged 30+ Incomes")
+    if monthly_entries >= 5:
+        achievements.append("📅 Logged 5+ Expenses This Month")
+    return render_template(
+        "profile.html",
+        user=current_user,
+        total_income=total_income,
+        total_expense=total_expense,
+        total_balance=total_balance,
+        chart_data=chart_data,
+        achievements=achievements,
+        member_since=member_since.strftime('%b %d, %Y'),
+        monthly_entries=monthly_entries
+    )
+    
+
+@app.route("/upload-profile", methods=["POST"])
+@login_required
+def upload_profile():
+    if "profile_picture" not in request.files:
+        flash("No file part in the request.", "danger")
+        return redirect(url_for('profile'))
+
+    file = request.files["profile_picture"]
+    if file.filename == "":
+        flash("No file selected.", "warning")
+        return redirect(url_for('profile'))
+
+    if file:
+        filename = secure_filename(file.filename)
+        ext = filename.rsplit(".", 1)[-1].lower()
+
+        # Optionally: validate extension (jpg, png, etc.)
+        allowed_exts = ["jpg", "jpeg", "png", "gif", "webp"]
+        if ext not in allowed_exts:
+            flash("Invalid file type. Please upload an image.", "danger")
+            return redirect(url_for('profile'))
+
+        # Save file
+        new_filename = f"{uuid.uuid4().hex}.{ext}"
+        upload_dir = os.path.join("static", "uploads")
+        os.makedirs(upload_dir, exist_ok=True)  # ensure dir exists
+        filepath = os.path.join(upload_dir, new_filename)
+        file.save(filepath)
+
+        # Save relative path to DB
+        current_user.profile_image_url = f"/static/uploads/{new_filename}"
+        db.session.commit()
+
+        flash("Profile picture updated!", "success")
+    else:
+        flash("File upload failed.", "danger")
+
+    return redirect(url_for('profile'))
+
+
+
+@app.route("/edit-profile", methods=["GET", "POST"])
+@login_required
+def edit_profile():
+    form = RegisterForm(obj=current_user)  # reuse your RegisterForm
+    if form.validate_on_submit():
+        current_user.name = form.name.data
+        current_user.email = form.email.data
+        db.session.commit()
+        flash("Profile updated successfully.", "success")
+    return redirect(url_for('account_settings'))
+
+
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        current_password = request.form.get("current_password")
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        if not check_password_hash(current_user.password, current_password):
+            flash("Current password is incorrect.", "danger")
+        elif new_password != confirm_password:
+            flash("Passwords do not match.", "warning")
+        else:
+            current_user.password = generate_password_hash(new_password, method='pbkdf2:sha256', salt_length=8)
+            db.session.commit()
+            flash("Password updated successfully.", "success")
+        return redirect(url_for('account_settings'))
+
+
+
+@app.route("/delete-account", methods=["POST"])
+@login_required
+def delete_account():
+    # Delete related data
+    db.session.query(Income).filter_by(user_id=current_user.id).delete()
+    db.session.query(Expense).filter_by(user_id=current_user.id).delete()
+    db.session.query(Category).filter_by(user_id=current_user.id).delete()
+
+    # Delete the user
+    db.session.delete(current_user)
+    db.session.commit()
+    flash("Your account has been deleted.", "danger")
+    return redirect(url_for('home'))
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
