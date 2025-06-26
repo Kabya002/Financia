@@ -20,17 +20,19 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", validators=[InputRequired()])
     submit = SubmitField("Login")
     
-class IncomeForm(FlaskForm):
-    source = StringField("Income Source", validators=[DataRequired()])
-    date = StringField("Date (YYYY-MM-DD)", validators=[DataRequired()])
+class ExpenseForm(FlaskForm):
+    category = StringField("Expense Category", validators=[DataRequired()])
     amount = FloatField("Amount", validators=[DataRequired()])
+    date = DateField("Date", validators=[DataRequired()])
+    submit = SubmitField("Add Expense")
+
+
+class IncomeForm(FlaskForm):
+    category = StringField("Income Category", validators=[DataRequired()])
+    amount = FloatField("Amount", validators=[DataRequired()])
+    date = DateField("Date", validators=[DataRequired()])
     submit = SubmitField("Add Income")
 
-class ExpenseForm(FlaskForm):
-    category = StringField("Category", validators=[DataRequired()])
-    amount = FloatField("Amount", validators=[DataRequired()])
-    date = DateField("Date", validators=[DataRequired()], format='%Y-%m-%d')
-    submit = SubmitField("Add Expense")
 
 class ContactForm(FlaskForm):
     name = StringField("Name", validators=[DataRequired()])

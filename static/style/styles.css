@@ -63,10 +63,48 @@ body {
   justify-content: center;
 }
 /* Fix dropdown behind Chart.js canvas */
+.profile-page canvas {
+  position: relative;
+  z-index: 1;
+}
+.chart-container {
+  position: relative;
+  height: 280px;
+  max-height: 280px;
+  width: 100%;
+  margin-bottom: 2rem;
+}
 canvas {
   position: relative;
   z-index: 1;
 }
+
+ .hero-section {
+    background: url('{{ url_for("static", filename="uploads/your-bg-image.jpg") }}') no-repeat center center;
+    background-size: cover;
+    height: 100vh;
+    color: white;
+  }
+
+  .btn-custom {
+    background-color: #14FFEC;
+    border-color: #14FFEC;
+    color: #000;
+  }
+
+  .btn-custom:hover {
+    background-color: #0eddd4;
+    border-color: #0eddd4;
+  }
+
+  .template-img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 0.5rem;
+  }
+
+
 
 /* Ensure cards don’t clip dropdowns */
 .card {
@@ -77,4 +115,16 @@ canvas {
 .dropdown-menu {
   z-index: 9999 !important;
   position: absolute !important;
+}
+
+.text-success {
+  color: #28a745 !important;
+}
+
+.text-danger {
+  color: #dc3545 !important;
+}
+
+.table th, .table td {
+  vertical-align: middle;
 }

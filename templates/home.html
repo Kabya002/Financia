@@ -2,10 +2,63 @@
 {% block styles %}
 {% endblock %}
 {% block content %}
-<div class="container">
-    <h1>Welcome to Finance Tracker</h1>
-    <p>Your one-stop solution for managing your finances.</p>
-</div>
+
+  <!-- Hero Section -->
+  <header class="text-center py-5">
+    <div class="container">
+      <h1 class="display-4 fw-bold">Welcome to Financia</h1>
+      <p class="lead">Track your finances, manage your goals, and stay financially fit.</p>
+      <a href="{{ url_for('register') }}" class="btn btn-primary">Get Started</a>
+    </div>
+  </header>
+
+  <!-- Templates Section -->
+  <section class="py-5 bg-dark text-light">
+    <div class="container">
+      <h2 class="text-center mb-4">Our Website Templates</h2>
+      <div class="row">
+        <div class="col-md-6 mb-4">
+          <img src="{{ url_for('static', filename='uploads/default-bg.jpg') }}" class="template-img" alt="Template 1">
+        </div>
+        <div class="col-md-6 mb-4">
+          <img src="{{ url_for('static', filename='uploads/default-bg.jpg') }}" class="template-img" alt="Template 2">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Creator Section -->
+  <section class="py-5 text-center">
+    <div class="container">
+      <h2 class="mb-3">Meet the Creator</h2>
+      <img src="{{ url_for('static', filename='uploads/creator_p.jpg') }}" alt="Profile Pic" 
+      class="rounded-circle" width="100" height="100" style="object-fit: cover;">
+      <p>Hello! I'm Kabyashree Gogoi, a passionate web developer and creator of Financia. I believe in empowering people with simple tools to master their finances.</p>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section class="py-5 bg-dark text-light">
+    <div class="container">
+      <h2 class="text-center mb-4">Contact Me</h2>
+      <form method="POST" action="#" class="mx-auto" style="max-width: 600px;">
+        <div class="mb-3">
+          <label class="form-label">Name</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Message</label>
+          <textarea name="message" class="form-control" rows="5" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Send Message</button>
+      </form>
+    </div>
+  </section>
 {% endblock %}
+
 {% block scripts %}
 {% endblock %}

@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from datetime import datetime, timedelta,date
 from collections import defaultdict
+from dateutil.relativedelta import relativedelta
 import calendar
 
 def get_total_income(db: SQLAlchemy, user_id: int) -> float:
@@ -31,72 +32,76 @@ def get_weekly_expense(db: SQLAlchemy, user_id: int) -> float:
         Expense.date >= str(last_7_days)
     ).scalar() or 0.0
 
-def get_chart_data_for_period(db, user_id, chart_type, offset):
-    from models import Income, Expense
 
-    today = datetime.today()
-    labels = []
-    income_data = []
-    expense_data = []
 
-    if chart_type == "month":
-        current_month = today.month - offset
-        current_year = today.year
-        while current_month <= 0:
-            current_month += 12
-            current_year -= 1
-        
-        months = []
-        for i in range(2, -1, -1):
-            month = current_month - i
-            year = current_year
-            while month <= 0:
-                month += 12
-                year -= 1
-            months.append((year, month))
-
-        for year, month in months:
-            label = calendar.month_abbr[month] + f" {year}"
-            start = datetime(year, month, 1)
-            _, last_day = calendar.monthrange(year, month)
-            end = datetime(year, month, last_day, 23, 59, 59)
-
-            income = db.session.query(Income).filter(Income.user_id == user_id, Income.date >= start.strftime("%Y-%m-%d"), Income.date <= end.strftime("%Y-%m-%d")).all()
-            expense = db.session.query(Expense).filter(Expense.user_id == user_id, Expense.date >= start.strftime("%Y-%m-%d"), Expense.date <= end.strftime("%Y-%m-%d")).all()
-
-            labels.append(label)
-            income_data.append(sum([inc.income for inc in income]))
-            expense_data.append(sum([exp.expense for exp in expense]))
-
-        range_label = f"{labels[0]} – {labels[-1]}"
-
-    else:  # week
+def get_chart_data_for_period(db, user_id, chart_type, offset=0):
+    if chart_type == "week":
+        # 🗓️ Get current week start (Monday)
+        today = datetime.today().date()
         start_of_week = today - timedelta(days=today.weekday()) - timedelta(weeks=offset)
+        end_of_week = start_of_week + timedelta(days=6)
+
+        # Initialize totals for each day
+        labels = [(start_of_week + timedelta(days=i)).strftime("%a") for i in range(7)]
+        income_totals = [0] * 7
+        expense_totals = [0] * 7
+
+        # Query transactions in week
+        incomes = db.session.query(Income).filter(
+            Income.user_id == user_id,
+            Income.date >= start_of_week,
+            Income.date <= end_of_week
+        ).all()
+
+        expenses = db.session.query(Expense).filter(
+            Expense.user_id == user_id,
+            Expense.date >= start_of_week,
+            Expense.date <= end_of_week
+        ).all()
+
+        for i in incomes:
+            day_index = (i.date - start_of_week).days
+            income_totals[day_index] += i.income
+
+        for e in expenses:
+            day_index = (e.date - start_of_week).days
+            expense_totals[day_index] += e.expense
+
+        range_label = f"{start_of_week.strftime('%d %b')} - {end_of_week.strftime('%d %b')}"
+        return labels, income_totals, expense_totals, range_label
+
+    elif chart_type == "month":
+        # 📅 Get current month minus offset
+        target_month = datetime.today().replace(day=1) - relativedelta(months=offset)
+        month_label = target_month.strftime("%B %Y")
         labels = []
-        income_by_day = defaultdict(float)
-        expense_by_day = defaultdict(float)
+        income_totals = []
+        expense_totals = []
 
-        for i in range(7):
-            day = start_of_week + timedelta(days=i)
-            labels.append(day.strftime("%a"))
-            day_str = day.strftime("%Y-%m-%d")
+        for i in range(3):  # current + last 2 months
+            month = target_month - relativedelta(months=i)
+            start_date = month.replace(day=1)
+            end_date = (start_date + relativedelta(months=1)) - timedelta(days=1)
+            label = month.strftime("%b")
 
-            income = db.session.query(Income).filter_by(user_id=user_id, date=day_str).all()
-            expense = db.session.query(Expense).filter_by(user_id=user_id, date=day_str).all()
+            income = db.session.query(Income).filter(
+                Income.user_id == user_id,
+                Income.date >= start_date,
+                Income.date <= end_date
+            ).all()
+            expense = db.session.query(Expense).filter(
+                Expense.user_id == user_id,
+                Expense.date >= start_date,
+                Expense.date <= end_date
+            ).all()
 
-            income_by_day[day_str] += sum([inc.income for inc in income])
-            expense_by_day[day_str] += sum([exp.expense for exp in expense])
+            labels.insert(0, label)
+            income_totals.insert(0, sum(i.income for i in income))
+            expense_totals.insert(0, sum(e.expense for e in expense))
 
-        income_data = [income_by_day[(start_of_week + timedelta(days=i)).strftime("%Y-%m-%d")] for i in range(7)]
-        expense_data = [expense_by_day[(start_of_week + timedelta(days=i)).strftime("%Y-%m-%d")] for i in range(7)]
+        range_label = f"{labels[0]} - {labels[-1]}"
+        return labels, income_totals, expense_totals, range_label
 
-        range_label = f"{start_of_week.strftime('%b %d')} – {(start_of_week + timedelta(days=6)).strftime('%b %d')}"
-
-    return {
-        "labels": labels,
-        "income": income_data,
-        "expense": expense_data,
-        "range_label": range_label
-    }
+    return [], [], [], ""
 # This code is a utility module for a Flask application that handles financial data.
 # It provides functions to calculate total income, total expenses, balance, monthly and weekly expenses,

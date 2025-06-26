@@ -62,15 +62,12 @@
           </div>
         </div>
       </div>
-
-      <!-- Chart -->
-      <!-- Chart -->
+      <!-- Chart Card -->
       <div class="col-md-6 mb-4" style="position: relative; z-index: 1;">
         <div class="card h-100" style="overflow: visible;">
           <div class="card-body">
             <h5 class="card-title">📈 Trend</h5>
-            <!-- 👇 This line is key -->
-            <canvas id="trendChart" height="100" style="z-index: 0; position: relative;"></canvas>
+            <canvas id="trendChart" style="z-index: 0; position: relative;"></canvas>
           </div>
         </div>
       </div>
@@ -117,37 +114,49 @@
 </div>
 {% endblock %}
 {% block scripts %}
+<!-- Chart.js Script -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  const ctx = document.getElementById('trendChart').getContext('2d');
-  const chartData = {{ chart_data| tojson }};
+  document.addEventListener("DOMContentLoaded", function () {
+    const ctx = document.getElementById('trendChart').getContext('2d');
+
+    // ✅ Safely parsed chart data from backend
+    const chartData = {{ chart_data | tojson | safe
+  }};
+
   new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
-      labels: chartData.labels,
-      datasets: [{
-        label: 'Income',
-        data: chartData.income,
-        borderColor: 'green',
-        fill: false
-      }, {
-        label: 'Expense',
-        data: chartData.expense,
-        borderColor: 'red',
-        fill: false
-      }]
+      labels: chartData[0], // labels
+      datasets: [
+        {
+          label: 'Income',
+          data: chartData[1], // income
+          backgroundColor: '#4caf50'
+        },
+        {
+          label: 'Expense',
+          data: chartData[2], // expense
+          backgroundColor: '#f44336'
+        }
+      ]
     },
     options: {
       responsive: true,
       plugins: {
-        legend: { display: true }
+        legend: { position: 'bottom' }
       },
       scales: {
         y: {
-          display: false  // 👈 hides entire Y-axis
+          display: false,
+          grid: { display: false }
+        },
+        x: {
+          grid: { display: false }
         }
       }
     }
   });
+});
 </script>
 {% endblock %}

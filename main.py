@@ -1,18 +1,16 @@
-from flask import Flask, render_template, redirect, url_for, request, abort, flash
+from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_bootstrap import Bootstrap5
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Text, DateTime
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
-#from flask_ckeditor import CKEditor, CKEditorField
 from datetime import datetime
-#from functools import wraps
+from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_gravatar import Gravatar
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user, login_required
 from forms import IncomeForm, RegisterForm, LoginForm, ExpenseForm, ContactForm
-from config import Config
 from models import User, Income, Expense, Category, Base
 from flask import session
 from utils import (get_total_income,get_total_expense,get_balance,get_monthly_expense,get_weekly_expense, get_chart_data_for_period)
@@ -22,14 +20,23 @@ import os
 from flask import jsonify
 import uuid
 from werkzeug.utils import secure_filename
+from itertools import chain
+from dotenv import load_dotenv
+import os
+
 
 app = Flask(__name__)
-app.config.from_object(Config)
+load_dotenv()
+
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'fallback-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['WTF_CSRF_ENABLED'] = os.getenv('WTF_CSRF_ENABLED', 'True') == 'True'
+app.debug = os.getenv('FLASK_DEBUG', 'True') == 'True'
 
 db = SQLAlchemy(app)
 bootstrap = Bootstrap5(app)
 csrf_token = CSRFProtect(app)
-
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
@@ -38,7 +45,6 @@ def handle_csrf_error(e):
 
 with app.app_context():
     Base.metadata.create_all(bind=db.engine)
-
 gravatar = Gravatar(app, size=100, rating='g', default='retro', force_default=False, force_lower=False, use_ssl=False, base_url=None)
 
 login_manager = LoginManager()
@@ -56,97 +62,122 @@ def inject_request():
 def home():
     return render_template("home.html")
 
-
 @app.route('/dashboard', methods=["GET", "POST"])
 @login_required
 def dashboard():
     expense_form = ExpenseForm()
     income_form = IncomeForm()
 
-    #Handle Expense Form Submission
-    if expense_form.validate_on_submit() and expense_form.submit.data:
+    if "submit_expense" in request.form and expense_form.validate_on_submit():
+        # Handle expense form
         category_name = expense_form.category.data.strip()
-
-        # Save new category if it doesn't exist
         category = db.session.query(Category).filter_by(name=category_name, user_id=current_user.id).first()
         if not category:
             category = Category(name=category_name, user_id=current_user.id)
             db.session.add(category)
             db.session.commit()
 
-        # Save new expense
         new_expense = Expense(
             source=category_name,
-            date=expense_form.date.data,  # This is already a datetime.date object from the WTForm
+            date=expense_form.date.data,
             expense=expense_form.amount.data,
             user_id=current_user.id
         )
-
         db.session.add(new_expense)
         db.session.commit()
         flash("Expense added successfully!", "success")
         return redirect(url_for('dashboard'))
 
-    # 💵 Handle Income Form Submission (optional)
-    if income_form.validate_on_submit() and income_form.submit.data:
+    elif "submit_income" in request.form and income_form.validate_on_submit():
+        # Handle income form
+        category_name = income_form.category.data.strip()
+        category = db.session.query(Category).filter_by(name=category_name, user_id=current_user.id).first()
+        if not category:
+            category = Category(name=category_name, user_id=current_user.id)
+            db.session.add(category)
+            db.session.commit()
+
         new_income = Income(
-            source=income_form.source.data,
+            source=category_name,
             date=income_form.date.data,
             income=income_form.amount.data,
             user_id=current_user.id
         )
-
         db.session.add(new_income)
         db.session.commit()
         flash("Income added successfully!", "success")
         return redirect(url_for('dashboard'))
 
-    # 📦 Load expense history & category list
+    # ✅ Load categories and transactions
     expenses = db.session.query(Expense).filter_by(user_id=current_user.id).order_by(Expense.date.desc()).all()
+    incomes = db.session.query(Income).filter_by(user_id=current_user.id).order_by(Income.date.desc()).all()
     user_categories = db.session.query(Category).filter_by(user_id=current_user.id).all()
 
-    # 📊 Totals using utils
+    # ✅ Merge income + expense for transaction history
+    transactions = sorted(
+        chain(
+            [{"date": e.date, "source": e.source, "amount": -e.expense} for e in expenses],
+            [{"date": i.date, "source": i.source, "amount": i.income} for i in incomes]
+        ),
+        key=lambda x: x["date"],
+        reverse=True
+    )
+
+    # ✅ Totals and summaries
     total_income = get_total_income(db, current_user.id)
     total_expense = get_total_expense(db, current_user.id)
     total_balance = get_balance(db, current_user.id)
     monthly_expenses = get_monthly_expense(db, current_user.id)
     weekly_expenses = get_weekly_expense(db, current_user.id)
-    
-  #Chart data: Get last 3 periods (month or week)
+
+    # ✅ Chart data
     chart_type = request.args.get("type", "monthly")
     offset = int(request.args.get("offset", 0))
-    labels, income_chart_data, expense_chart_data, range_label = get_chart_data_for_period(db, current_user.id, chart_type, offset)
-    return render_template(
-    "dashboard.html",
-    expense_form=expense_form,
-    income_form=income_form,
-    expenses=expenses,
-    total_income=total_income,
-    total_expense=total_expense,
-    total_balance=total_balance,
-    monthly_expenses=monthly_expenses,
-    weekly_expenses=weekly_expenses,
-    user_categories=user_categories,
-    chart_labels=labels,
-    chart_income=income_chart_data,
-    chart_expense=expense_chart_data,
-    chart_range_label=range_label
-)
+    labels, income_chart_data, expense_chart_data, range_label = get_chart_data_for_period(
+        db, current_user.id, chart_type, offset
+    )
 
+    return render_template(
+        "dashboard.html",
+        expense_form=expense_form,
+        income_form=income_form,
+        expenses=expenses,
+        incomes=incomes,
+        transactions=transactions,
+        total_income=total_income,
+        total_expense=total_expense,
+        total_balance=total_balance,
+        monthly_expenses=monthly_expenses,
+        weekly_expenses=weekly_expenses,
+        user_categories=user_categories,
+        chart_labels=labels,
+        chart_income=income_chart_data,
+        chart_expense=expense_chart_data,
+        chart_range_label=range_label
+    )
 
 @app.route("/api/chart-data")
 @login_required
 def chart_data():
-    chart_type = request.args.get("type", "month")  # 'month' or 'week'
+    chart_type = request.args.get("type", "month")
     offset = int(request.args.get("offset", 0))
-    
-    chart_data = get_chart_data_for_period(db, current_user.id, chart_type, offset)
-    return jsonify(chart_data)
 
-@login_required
-@app.route('/income')
-def income():
-    return render_template("income.html")
+    # Ensure chart_type is valid
+    if chart_type not in ("month", "week"):
+        return jsonify({"error": "Invalid chart type"}), 400
+
+    # Get chart data for that user
+    labels, income_data, expense_data, range_label = get_chart_data_for_period(
+        db, current_user.id, chart_type, offset
+    )
+
+    return jsonify({
+        "labels": labels,
+        "income": income_data,
+        "expense": expense_data,
+        "range_label": range_label
+    })
+
 
 
 @app.route("/account-settings", methods=["GET", "POST"])
@@ -167,7 +198,7 @@ def account_settings():
 @app.route('/profile')
 @login_required
 def profile():
-    chart_data= get_chart_data_for_period(db, current_user.id, 'month', 0)
+    chart_data = get_chart_data_for_period(db, current_user.id, 'month', 0)
     total_income = get_total_income(db, current_user.id)
     total_expense = get_total_expense(db, current_user.id)
     total_balance = total_income - total_expense

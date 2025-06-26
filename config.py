@@ -6,7 +6,7 @@ class Config:
 
     # SQLAlchemy database URI (update with your DB info)
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///finance_tracker.db')
-
+    
     # Track modifications - turn off for performance
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
