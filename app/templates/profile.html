@@ -18,7 +18,7 @@
 
         <!-- Dropdown Menu -->
         <div class="dropdown-menu p-3 shadow" style="min-width: 220px; position: absolute; z-index: 9999;">
-          <!-- ✅ High z-index -->
+          <!-- High z-index -->
           <form action="{{ url_for('upload_images') }}" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="mb-2">

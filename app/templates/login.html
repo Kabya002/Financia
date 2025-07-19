@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block styles %}
+<style>
+    body {
+        background: url("{{ url_for('static', filename='banners/default-bg.jpg') }}") no-repeat center center fixed;
+        background-size: cover;
+        background-color: #f8f9fa;
+        /* Fallback color */
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="login-container">
+    <div class="card p-4 shadow-lg" style="width: 100%; max-width: 400px;">
+        <h3 class="text-center mb-4">Login</h3>
+        <form method="POST" onsubmit="this.querySelector('button[type=submit]').disabled = true;">
+            {{ form.csrf_token }}
+            {{ form.hidden_tag() }}
+            {% if form.errors %}
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    {% for field, errors in form.errors.items() %}
+                    {% for error in errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            <div class="mb-3">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-control", autofocus=True) }}
+                {% for error in form.email.errors %}
+                <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="mb-3">
+                {{ form.password.label(class="form-label") }}
+                {{ form.password(class="form-control") }}
+                {% for error in form.password.errors %}
+                <div class="text-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="d-grid">
+                    {{ form.submit(class="btn btn-success") }}
+            </div>
+        </form>
+        <p class="mt-3 text-center">Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a>.
+        </p>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% endblock %}

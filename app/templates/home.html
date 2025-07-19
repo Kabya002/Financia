@@ -1,6 +1,5 @@
 {% extends "base.html" %} 
-{% block styles %}
-{% endblock %}
+{% block styles %}{{ super() }}{% endblock %}
 {% block content %}
 
   <!-- Hero Section -->
@@ -8,7 +7,7 @@
     <div class="container">
       <h1 class="display-4 fw-bold">Welcome to Financia</h1>
       <p class="lead">Track your finances, manage your goals, and stay financially fit.</p>
-      <a href="{{ url_for('register') }}" class="btn btn-primary">Get Started</a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Get Started</a>
     </div>
   </header>
 
@@ -59,6 +58,4 @@
     </div>
   </section>
 {% endblock %}
-
-{% block scripts %}
-{% endblock %}
+{% block scripts %}{{ super() }}{% endblock %}

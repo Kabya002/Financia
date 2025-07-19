@@ -5,4 +5,12 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///finance_tracker.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = True
-    DEBUG = True
+    FLASK_DEBUG = True
+    FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "default_jwt_secret")
+    JWT_TOKEN_LOCATION = ['headers', 'cookies']
+    JWT_COOKIE_CSRF_PROTECT = False
+    JWT_BLACKLIST_ENABLED = True
+    JWT_BLACKLIST_TOKEN_CHECKS = ['access']
+
+
